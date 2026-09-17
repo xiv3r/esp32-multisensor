@@ -1,6 +1,8 @@
 # esp32-multisensor
 ESP32 IoT Environmental Monitoring System with multiple sensors.
 
+<image src="https://github.com/xiv3r/esp32-multisensor/blob/main/image.png">
+
 # Wiring Connections
 >Left Side (Inputs):
 
