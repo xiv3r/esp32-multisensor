@@ -82,7 +82,12 @@ int dhtErrorCount = 0;
 void setup() {
   Serial.begin(115200);
   
-  esp_task_wdt_init(10, true);
+  esp_task_wdt_config_t twdt_config = {
+      .timeout_ms = 10000, // 10 seconds
+      .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,
+      .trigger_panic = true,
+  };
+  esp_task_wdt_init(&twdt_config);
   esp_task_wdt_add(NULL);
 
   pinMode(PIN_PIR, INPUT);
