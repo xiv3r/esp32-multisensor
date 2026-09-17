@@ -10,7 +10,7 @@
 #include <esp_task_wdt.h> 
 
 // ================= VERIFIED PIN CONFIGURATION =================
-#define PIN_DHT         4   // CORRECTED from 15
+#define PIN_DHT         4  
 #define PIN_LDR         34  
 #define PIN_PIR         27  
 #define PIN_MQ2         35  
@@ -19,7 +19,7 @@
 #define PIN_LED         33  
 #define PIN_SDA         21  
 #define PIN_SCL         22  
-#define PIN_BUTTON      0   // Onboard BOOT button used for Mute
+#define PIN_BUTTON      0  
 
 // ================= CONFIGURATION =================
 #define SCREEN_WIDTH 128
@@ -83,7 +83,7 @@ void setup() {
   Serial.begin(115200);
   
   esp_task_wdt_config_t twdt_config = {
-      .timeout_ms = 10000, // 10 seconds
+      .timeout_ms = 10000, 
       .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,
       .trigger_panic = true,
   };
