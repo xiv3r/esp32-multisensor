@@ -27,13 +27,20 @@ jobs:
         arduino-cli core install esp32:esp32
         
         # Install libraries
-        # DHT22 Library Install
+        # 1. Install the DHT sensor library
+        arduino-cli lib install "DHT sensor library"
+        
+        # 2. Install the Unified Sensor library (Required for DHT
         arduino-cli lib install "Adafruit Unified Sensor"
-        git clone https://github.com/adafruit/DHT-sensor-library.git ~/Arduino/libraries/DHT-sensor-library
+       
+        # 3. Install the SSD1306 OLED library
+        arduino-cli lib install "Adafruit SSD1306"
+       
+        # 4. Install the GFX library (Required for SSD1306)
+        arduino-cli lib install "Adafruit GFX Library"     
         
         # Compile firmware
-        cd ESP32
-        mv *.ino ESP32.ino
+        mv *.ino esp32-multisensor.ino
         arduino-cli compile --fqbn esp32:esp32:esp32 --clean --output-dir firmware .
         
         # Rename
@@ -41,7 +48,7 @@ jobs:
         rm firmware/*.ino.bootloader.bin  
         rm firmware/*.ino.partitions.bin
         
-        mv firmware/*.ino.merged.bin      firmware/esp32-multi-firmware-0x0.bin
+        mv firmware/*.ino.merged.bin      firmware/esp32-multisensor-firmware-0x0.bin
         
     - name: Determine release tag
       id: get_tag
