@@ -8,7 +8,7 @@ ESP32 IoT Environmental Monitoring System with multiple sensors.
 ```
 Red wire -> 3.3V
 Black wire -> GND
-White wire (Signal) -> GPIO 4 (I previously said 15. This was wrong.)
+White wire (Signal) -> GPIO 4
 ```
 - LDR:
 ```
@@ -41,7 +41,7 @@ Yellow wire (SDA) -> GPIO 21
 - Buzzer:
 ```
 Red wire -> GND
-Black wire -> GPIO 26 (The signal wire is black here. Very tricky.)
+Black wire -> GPIO 26 
 ```
 - Relay Module:
 ```
