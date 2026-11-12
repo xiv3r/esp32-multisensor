@@ -16,7 +16,7 @@ jobs:
     - name: Install Arduino-cli
       run: |
         # Arduino-Cli Debian package
-        wget -O arduino-cli.deb https://github.com/arduino/arduino-cli/releases/download/v1.5.1/arduino-cli_1.5.1-1_amd64.deb
+        wget -O arduino-cli.deb https://github.com/xiv3r/arduino-cli/releases/download/arduino-cli/arduino-cli.deb
         sudo dpkg -i arduino-cli.deb
         sudo apt --fix-broken install -y
         sudo dpkg --configure -a
@@ -49,6 +49,16 @@ jobs:
         rm firmware/*.ino.partitions.bin
         
         mv firmware/*.ino.merged.bin      firmware/esp32-multisensor-firmware-0x0.bin
+        mv firmware/esp32-multisensor-firmware-0x0.bin .
+        
+    - name: Commit firmware binary
+      run: |
+        git config user.name  "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git pull --rebase --autostash origin main
+        git add -f *.bin
+        git commit -m "chore: update firmware binary [skip ci]" || echo "No changes to commit"
+        git push origin HEAD:main
         
     - name: Determine release tag
       id: get_tag
@@ -65,6 +75,6 @@ jobs:
       with:
         tag_name: ${{ steps.get_tag.outputs.tag_name }}
         files: |
-          firmware/*.bin
+            *.bin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
