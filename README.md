@@ -3,119 +3,74 @@ ESP32 IoT Environmental Monitoring System with multiple sensors.
 
 <image src="https://github.com/xiv3r/esp32-multisensor/blob/main/image.png">
 
-## 1. Hardware Required
+## What This Is
+An ESP32 (classic) firmware sketch that turns the board into a standalone environmental monitoring node with:
+- **DHT22** (temp/humidity), **MQ-2** (gas), **LDR** (light), **PIR** (motion)
+- **SSD1306 OLED** (I²C) status display
+- **Buzzer, LED, and 5 relay outputs** driven by alarm rules
+- **Wi-Fi access point** at `192.168.4.1` with an embedded web console
+- **Persistent config** stored in NVS with dual-bank CRC-verified records
+- **Factory reset** via 5-second BOOT button hold
 
-| Component | Quantity | Notes |
-|---|---|---|
-| ESP32 DevKit (WROOM-32) | 1 | Any ESP32 variant with 4MB+ flash |
-| DHT22 (AM2302) | 1 | Temperature + humidity |
-| MQ2 gas sensor module | 1 | Analog output |
-| LDR + 10kΩ resistor | 1 | Light sensor (voltage divider) |
-| HC-SR501 PIR | 1 | Motion sensor |
-| SSD1306 OLED 128×64 | 1 | I2C, address 0x3C |
-| Active buzzer (5V) | 1 | Alarm output |
-| Relay module (5V) | 1 | Load control |
-| LED + 220Ω resistor | 1 | Status indicator |
-| Push button | 1 | Momentary, for mute/reset |
-| Breadboard + jumper wires | — | — |
+## Required Libraries (install via Arduino Library Manager)
+- `Adafruit GFX Library`
+- `Adafruit SSD1306`
+- `DHT sensor library` (Adafruit)
+- ESP32 board package (includes `Preferences`, `WiFi`, `Wire`, ADC oneshot driver, etc.)
 
-## 2. Wiring
+## Board Settings
+- **Board:** ESP32 Dev Module (classic ESP32 — **not** S2/S3/C3)
+- **Core:** must run Arduino loop on **Core 1** (the sketch `static_assert`s this)
+- **Partition scheme:** default is fine (NVS required)
 
-### Power
-- ESP32 `3V3` → DHT22 `VCC`, SSD1306 `VCC`
-- ESP32 `VIN` (5V from USB) → MQ2 `VCC`, PIR `VCC`, buzzer `+`, relay `VCC`
-- All `GND` → common ground
+## Wiring Map (fixed — do not change)
+| Function | GPIO |
+|---|---|
+| DHT22 data | 4 |
+| MQ-2 analog | 35 (ADC1) |
+| LDR analog | 34 (ADC1) |
+| PIR signal | 27 |
+| BOOT button | 0 (internal pull-up) |
+| OLED SDA / SCL | 21 / 22 |
+| Relay unified | 25 |
+| Relay DHT / Gas / Light / PIR | 15 / 18 / 19 / 5 |
+| Buzzer | 26 |
+| LED | 33 |
 
-### Sensor connections
+⚠️ **GPIO 5 and 15 are boot-strapping pins** — use high-impedance drivers and a hardware inhibit if outputs must stay off during boot. Never drive relay coils directly from GPIOs.
 
-| Signal | ESP32 Pin | Component |
-|---|---|---|
-| DHT22 DATA | GPIO 4 | + 10kΩ pull-up to 3V3 |
-| MQ2 AOUT | GPIO 35 | Analog input |
-| LDR (divider midpoint) | GPIO 34 | Analog input |
-| PIR OUT | GPIO 27 | Digital input |
-| OLED SDA | GPIO 21 | I2C data |
-| OLED SCL | GPIO 22 | I2C clock |
-| Buzzer + | GPIO 26 | Digital output |
-| Relay IN | GPIO 25 | Digital output |
-| LED anode | GPIO 33 | Digital output |
-| Button | GPIO 0 | To GND (internal pull-up) |
+## First Boot
+1. Flash the sketch and open Serial Monitor (any baud; logging is disabled).
+2. On a phone/PC, join Wi-Fi **`ESP32_Multi_Sensors`** with password **`12345678`**.
+3. Open **http://192.168.4.1/** in a browser.
+4. The dashboard shows live readings; use the sidebar to configure each module.
 
-⚠️ **Important**: Do **not** hold the button during power-on — GPIO 0 held low at boot enters flash mode. Press only after boot.
+## Configuration Notes
+- All settings are range-checked; hysteresis must keep the clear point inside the sensor range.
+- **Save cooldown:** 15 s between writes, max 12 writes per hour (flash wear protection).
+- **Wi-Fi changes** save first, then reboot ~10 s later — reconnect to the new SSID.
+- **DHT22** minimum sample interval is 2.5 s; a failed/stale sample clears its alarms.
+- **MQ-2** has a warm-up delay (default 180 s) during which readings are withheld.
+- **PIR hold** starts after the last debounced HIGH.
 
-⚠️ **Relay polarity**: Most relay modules are **active-LOW**. If yours is, set `RELAY_ACTIVE_HIGH 0` at the top of the code. Same for buzzer (`BUZZER_ACTIVE_HIGH`) and LED (`LED_ACTIVE_HIGH`).
+## Factory Reset
+Hold the **BOOT (GPIO 0)** button for **≥5 s** while running, then release. Outputs turn off, defaults are written, and the device restarts. Reconnect with the default SSID/password.
 
-⚠️ **LDR polarity**: If using the **analog** output of an LDR module (bright = high ADC), set the "High ADC Means Dark" option to **No** in the LDR settings page after boot. Verify by covering the sensor.
+## Safety Reminders
+- MQ-2 output is **raw ADC counts, not ppm** — this is **not** a certified gas/smoke alarm.
+- Use a voltage divider so analog inputs never exceed 3.3 V.
+- The AP is **WPA2, local-only**; anyone on it can manage the device — change the password before deployment.
+- All outputs are **fail-off** during startup, storage errors, or reset.
 
-## 3. Software Setup
-
-### 3.1 Install Arduino IDE + ESP32 core
-1. Install [Arduino IDE 2.x](https://www.arduino.cc/en/software).
-2. **File → Preferences → Additional Boards Manager URLs**: add
-   `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
-3. **Tools → Board → Boards Manager** → search "esp32" → install **esp32 by Espressif** (v2.0.14 or v3.x both work).
-4. **Tools → Board → ESP32 Arduino → ESP32 Dev Module**
-5. Set **Tools → Partition Scheme → Default 4MB with spiffs** (or any with ≥1.2MB app).
-
-### 3.2 Install libraries
-**Tools → Manage Libraries**, install:
-- **DHT sensor library** (Adafruit) + **Adafruit Unified Sensor**
-- **Adafruit SSD1306** + **Adafruit GFX Library**
-- **Adafruit BusIO** (auto-installed as dependency)
-
-The following are built into the ESP32 core (no install needed):
-`WiFi`, `WebServer`, `DNSServer`, `Preferences`, `Wire`, `esp_task_wdt`, `esp_wifi`, `esp_system`.
-
-### 3.3 Configure the sketch
-Open the provided `.ino` file. At the top, verify/change:
-
-```cpp
-// Active levels — match your hardware
-#define BUZZER_ACTIVE_HIGH   1   // set 0 if buzzer sounds on LOW
-#define LED_ACTIVE_HIGH      1   // set 0 if LED lights on LOW
-#define RELAY_ACTIVE_HIGH    1   // set 0 for active-LOW relay modules
-```
-
-Optional: change the default WiFi credentials and AP channel:
-```cpp
-#define DEFAULT_WIFI_SSID   "ESP32_Multi_Sensors"
-#define DEFAULT_WIFI_PASS   "12345678"       // must be 8–64 chars
-#define DEFAULT_AP_CHANNEL  6
-```
-
-### 3.4 Upload
-1. Connect ESP32 via USB.
-2. **Tools → Port** → select the ESP32's port.
-3. Click **Upload** (→).
-4. If upload fails with "Connecting...", hold the BOOT button during the first few seconds of upload.
-
-## 4. First Boot
-
-1. Open **Tools → Serial Monitor** at **115200 baud** (optional; the code doesn't print, but you can watch for resets).
-2. After ~2 seconds, the OLED shows "Warming up…".
-3. On your phone or laptop, scan for WiFi networks. Connect to:
-   - **SSID**: `ESP32_Multi_Sensors`
-   - **Password**: `12345678`
-4. A captive portal should pop up automatically. If not, open a browser and go to **http://192.168.4.1**.
-
-**Note**: The device warms up for 30 seconds (MQ2 heater). During this time, sensor values display but alarms are suppressed.
-
-## 5. Using the Web Interface
-
-### Dashboard (`/`)
-- Live sensor readings (updates every 2 s)
-- System state banner: **Normal / Warm Up / Alarm / Sensor Failure**
-- Uptime, free heap, mute status
-- Red = alarm condition, orange = warning, green = OK
-
-### Settings (`/settings`)
-Per-sensor configuration pages:
-- **DHT22**: enable, alarm threshold (e.g., `400` = 40.0°C), calibration offsets
-- **MQ2**: enable, threshold (0–4095), calibration offset
-- **LDR**: enable, dark threshold, polarity
-- **PIR**: enable, motion hold time
-- **Buzzer**: enable, mute duration (≥1 s)
-- **Relay**: enable, relay hold time
+## Troubleshooting
+| Symptom | Check |
+|---|---|
+| OLED blank | I²C address (0x3C/0x3D), SDA=21/SCL=22, module powered |
+| DHT shows `--` | Pull-up to 3.3 V, GPIO 4, sample interval ≥2500 ms |
+| ADC reads implausible | Divider values, common ground, GPIO 34/35 are input-only |
+| "Storage error" banner | NVS full/corrupt — factory reset, then re-save |
+| Can't reach 192.168.4.1 | Rejoin AP; captive portal may need manual URL |
+| Save rejected with 429 | Wait for cooldown shown in **System status** |
 - **System**: warmup, sensor/display intervals, alarm latch time
 
 Each page has a **Save** button. Settings are written to flash within 30 s (debounced) and survive reboot.
